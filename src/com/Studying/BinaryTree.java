@@ -95,36 +95,64 @@ public class BinaryTree<T extends Comparable<T>> extends AbstractSet<T> implemen
         }
     }
 
+    private boolean replaceInParent(Node<T> replaceable, Node<T> replacer) {
+        if (replaceable != root) {
+            if (replaceable.parent.left == replaceable) {
+                replaceable.parent.left = replacer;
+            }
+            else  {
+                replaceable.parent.right = replacer;
+            }
+            if (replacer != null) replacer.parent = replaceable.parent;
+            return true;
+        }
+        if (replacer != null) {
+            replacer.parent = null;
+        }
+        root = replacer;
+        return false;
+    }
+
     public class BinaryTreeIterator implements Iterator<T> {
 
         private Node<T> current = null;
 
         private BinaryTreeIterator() {
-            current = null;
+            Node<T> temp = root;
+            while (temp.left != null) {
+                temp = temp.left;
+            }
+            current = new Node<T>(temp.value);
+            current.right = temp;
         }
 
         private Node<T> findNext() {
-            if (current == null) {
-                return root;
-            }
-            else if (current.left != null) {
-                return current.left;
-            }
-            else if (current.right != null) {
-                return current.right;
+            if (current.right != null) {
+                return down();
             }
             else {
-                Node<T> tempCurrent = current;
-                Node tempPrevious = null;
-                do {
-                    if (tempCurrent == root) {
-                        return null;
-                    }
-                    tempPrevious = tempCurrent;
-                    tempCurrent = tempCurrent.parent;
-                } while ((tempCurrent.right == null || tempCurrent.right == tempPrevious));
-                return tempCurrent.right;
+                return up();
             }
+        }
+
+        private Node<T> down() {
+            Node<T> temp = current.right;
+            while (temp.left != null) {
+                temp = temp.left;
+            }
+            return temp;
+        }
+
+        private Node<T> up() {
+            Node<T> temp = current;
+            while (temp.parent.right == temp) {
+                temp = temp.parent;
+                if (temp == root) {
+                    return null;
+                }
+            }
+                temp = temp.parent;
+                return temp;
         }
 
         @Override
@@ -142,83 +170,43 @@ public class BinaryTree<T extends Comparable<T>> extends AbstractSet<T> implemen
         @Override
         public void remove() {
             Node<T> temp = current;
-            if (temp == null) {
-                return;
+            if (temp.parent == null && temp != root) {
+                throw new IllegalStateException();
             }
             else if (temp.left == null && temp.right == null) {
-                if (temp.parent.left == temp) {
-                    temp.parent.left = null;
-                }
-                else {
-                    temp.parent.right = null;
-                }
+                replaceInParent(temp, null);
+                size--;
             }
-            else if (temp.right == null) {next();
-                if (temp.parent.left == temp) {
-                    temp.parent.left = temp.left;
-                    temp.left.parent = temp.parent;
+            else if (temp.right == null || (temp.left != null && temp.left.right == null)) {
+                replaceInParent(temp, temp.left);
+                if (temp.right != null) {
+                    temp.left.right = temp.right;
+                    temp.right.parent = temp.left;
                 }
-                else {
-                    temp.parent.right = temp.left;
-                    temp.left.parent = temp.parent;
-                }
+                size--;
             }
-            else if (temp.left == null) {next();
-                if (temp.parent.left == temp) {
-                    temp.parent.left = temp.right;
-                    temp.right.parent = temp.parent;
+            else if (temp.left == null || (temp.right != null && temp.right.left == null)) {
+                replaceInParent(temp, temp.right);
+                if (temp.left != null) {
+                    temp.right.left = temp.left;
+                    temp.left.parent = temp.right;
                 }
-                else {
-                    temp.parent.right = temp.right;
-                    temp.right.parent = temp.parent;
-                }
+                size--;
             }
             else {
-                if (temp.right.left == null) {
-                    if (temp.parent.left == temp) {
-                        temp.parent.left = temp.right;
-                        temp.right.parent = temp.parent;
-                    }
-                    else {
-                        temp.parent.right = temp.right;
-                        temp.right.parent = temp.parent;
-                    }
-                    temp.left.parent = temp.right;
-                    temp.right.left = temp.left;
+                Node<T> additionalTemp = temp.right;
+                while (additionalTemp.left != null) {
+                    additionalTemp = additionalTemp.left;
                 }
-                else if (temp.left.right == null) {
-                    if (temp.parent.left == temp) {
-                        temp.parent.left = temp.left;
-                        temp.left.parent = temp.parent;
-                    }
-                    else {
-                        temp.parent.right = temp.left;
-                        temp.left.parent = temp.parent;
-                    }
-                    temp.right.parent = temp.left;
-                    temp.left.right = temp.right;
-                }
-                else {
-                    Node<T> additionalTemp = temp.right;
-                    while (additionalTemp.left != null) {
-                        additionalTemp = additionalTemp.left;
-                    }
 
-                    current = additionalTemp;
-                    remove();
+                current = additionalTemp;
+                remove();
 
-                    if (temp.parent.left == temp) {
-                        temp.parent.left = additionalTemp;
-                    }
-                    else {
-                        temp.parent.right = additionalTemp;
-                    }
-                    additionalTemp.parent = temp.parent;
-                    additionalTemp.right = temp.right;
-                    temp.right.parent = additionalTemp;
-                    additionalTemp.left = temp.left;
-                    temp.left.parent = additionalTemp;
-                }
+                replaceInParent(temp, additionalTemp);
+                additionalTemp.right = temp.right;
+                temp.right.parent = additionalTemp;
+                additionalTemp.left = temp.left;
+                temp.left.parent = additionalTemp;
             }
         }
     }
